@@ -126,7 +126,7 @@ static std::string_view stringViewFromSpan(std::span<const std::byte> s)
 	return std::string_view(reinterpret_cast<const char*>(s.data()), s.size());
 }
 
-static HTTPRequest makeRequest(const http_request_event &ev, std::string_view method)
+static HTTPRequest makeRequest(const http_request_event &ev, std::string_view url)
 {
 	return HTTPRequest {
 		.cookie = ev.cookie,
@@ -136,16 +136,16 @@ static HTTPRequest makeRequest(const http_request_event &ev, std::string_view me
 		.localPort = ev.local_port,
 		.peerIP = ev.peer_ip,
 		.peerPort = ev.peer_port,
-		.path = std::string(method),
+		.path = std::string(url),
 		.type = sockTypeToRequestType(ev.sock_type)
 	};
 }
 
 static void handleEvent(const http_request_event &ev, std::span<const std::byte> rawData)
 {
-	const auto method = stringViewFromSpan(rawData.subspan(sizeof(ev)));
+	const auto url = stringViewFromSpan(rawData.subspan(sizeof(ev)));
 
-	requestMap().emplace(ev.cookie, makeRequest(ev, method));
+	requestMap().emplace(ev.cookie, makeRequest(ev, url));
 }
 
 static void handleEvent(const http_request_finished_event &ev, std::span<const std::byte>)

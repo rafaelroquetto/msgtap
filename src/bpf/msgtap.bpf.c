@@ -446,7 +446,7 @@ find_first_of(const unsigned char *start, const unsigned char *end, char ch)
 }
 
 
-static __always_inline struct span request_method(
+static __always_inline struct span request_url(
 		const unsigned char *header_start,
 		const unsigned char *header_end)
 {
@@ -688,9 +688,9 @@ int handle_client_http_request(struct sk_msg_md *msg)
 		return SK_PASS;
 	}
 
-	const struct span method = request_method(start, end);
+	const struct span url = request_url(start, end);
 
-	if (!method.ptr)
+	if (!url.ptr)
 	{
 		data->state = sock_state_idle;
 		return SK_PASS;
@@ -698,7 +698,7 @@ int handle_client_http_request(struct sk_msg_md *msg)
 
 	data->tp = make_traceparent();
 
-	const __u32 event_len = sizeof(struct http_request_event) + method.len;
+	const __u32 event_len = sizeof(struct http_request_event) + url.len;
 
 	struct bpf_dynptr dp;
 
@@ -727,15 +727,15 @@ int handle_client_http_request(struct sk_msg_md *msg)
 	ev->local_port = data->local_port;
 	ev->peer_ip = data->peer_ip;
 	ev->peer_port = data->peer_port;
-	ev->payload_len = method.len;
+	ev->payload_len = url.len;
 	ev->tp = make_traceparent(); // TODO trace context propagation
 	ev->sock_type = data->type;
 
 	unsigned char *payload = (unsigned char*) ev + sizeof(*ev);
 
-	if (method.len > 0)
+	if (url.len > 0)
 	{
-		if (bpf_probe_read_kernel(payload, method.len, method.ptr) != 0)
+		if (bpf_probe_read_kernel(payload, url.len, url.ptr) != 0)
 		{
 			bpf_printk("failed to write payload");
 
@@ -784,9 +784,9 @@ static __always_inline void handle_server_http_request(struct __sk_buff *skb, st
 		return;
 	}
 
-	const struct span method = request_method(start, end);
+	const struct span url = request_url(start, end);
 
-	if (!method.ptr)
+	if (!url.ptr)
 	{
 		data->state = sock_state_idle;
 		return;
@@ -794,7 +794,7 @@ static __always_inline void handle_server_http_request(struct __sk_buff *skb, st
 
 	data->tp = make_traceparent();
 
-	const __u32 event_len = sizeof(struct http_request_event) + method.len;
+	const __u32 event_len = sizeof(struct http_request_event) + url.len;
 
 	struct bpf_dynptr dp;
 
@@ -823,17 +823,17 @@ static __always_inline void handle_server_http_request(struct __sk_buff *skb, st
 	ev->local_port = data->local_port;
 	ev->peer_ip = data->peer_ip;
 	ev->peer_port = data->peer_port;
-	ev->payload_len = method.len;
+	ev->payload_len = url.len;
 	ev->tp = make_traceparent(); // TODO trace context propagation
 	ev->sock_type = data->type;
 
 	unsigned char *payload = (unsigned char*) ev + sizeof(*ev);
 
-	const __u32 method_offset = method.ptr - start;
+	const __u32 url_offset = url.ptr - start;
 
-	if (method.len > 0)
+	if (url.len > 0)
 	{
-		if (bpf_skb_load_bytes(skb, method_offset, payload, method.len) != 0)
+		if (bpf_skb_load_bytes(skb, url_offset, payload, url.len) != 0)
 		{
 			bpf_printk("failed to write payload");
 
