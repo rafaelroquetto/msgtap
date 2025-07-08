@@ -149,6 +149,8 @@ struct
 
 
 static const unsigned char HEADER_SEP[] = {'\r', '\n', '\r', '\n'};
+static const char HTTP_RESP[] = "HTTP/1.X 000 ";
+
 
 static __always_inline struct span make_span(const unsigned char *ptr, __u32 len)
 {
@@ -568,19 +570,17 @@ static __always_inline __u8 handle_server_request(struct __sk_buff *skb, struct 
 static __always_inline __u16 parse_http_response_status(const unsigned char *start,
 		const unsigned char *end)
 {
-	static const char http_resp[] = "HTTP/1.X 000 ";
-
-	if (start + sizeof(http_resp) > end)
+	if (start + sizeof(HTTP_RESP) > end)
 		return 0;
 
-	if (start[0] != http_resp[0]
-			|| start[1] != http_resp[1]
-			|| start[2] != http_resp[2]
-			|| start[3] != http_resp[3]
-			|| start[4] != http_resp[4]
-			|| start[5] != http_resp[5]
-			|| start[6] != http_resp[6]
-			|| start[8] != http_resp[8])
+	if (start[0] != HTTP_RESP[0]
+			|| start[1] != HTTP_RESP[1]
+			|| start[2] != HTTP_RESP[2]
+			|| start[3] != HTTP_RESP[3]
+			|| start[4] != HTTP_RESP[4]
+			|| start[5] != HTTP_RESP[5]
+			|| start[6] != HTTP_RESP[6]
+			|| start[8] != HTTP_RESP[8])
 	{
 		return 0;
 	}
@@ -607,6 +607,8 @@ static __always_inline void handle_server_http_reponse(struct sk_msg_md *msg, st
 
 	data->state = sock_state_idle;
 
+	bpf_msg_pull_data(msg, 0, sizeof(HTTP_RESP), 0);
+
 	const __u16 status_code = parse_http_response_status(msg_data(msg), msg_data_end(msg));
 
 	struct http_request_finished_event *ev =
@@ -629,6 +631,8 @@ static __always_inline void handle_client_http_response(struct __sk_buff *skb, s
 		return;
 
 	data->state = sock_state_idle;
+
+	bpf_skb_pull_data(skb, sizeof(HTTP_RESP));
 
 	const __u16 status_code = parse_http_response_status(skb_data(skb), skb_data_end(skb));
 
