@@ -1,6 +1,6 @@
 #pragma once
 
-#include <linux/bpf.h>
+#include "vmlinux.h"
 
 // we need at least 9 bytes (the length of "OPTIONS") to infer whether this is
 // a HTTP request

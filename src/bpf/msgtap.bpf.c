@@ -1,8 +1,4 @@
-#include <linux/bpf.h>
-#include <linux/if_ether.h>
-#include <linux/ip.h>
-#include <linux/ptrace.h>
-#include <linux/tcp.h>
+#include "vmlinux.h"
 
 #include <bpf/bpf_endian.h>
 #include <bpf/bpf_tracing.h>
@@ -28,10 +24,10 @@ struct span
 	__u32 len;
 };
 
-enum sock_type : __u8
+enum socket_type : __u8
 {
-	sock_type_client,
-	sock_type_server
+	socket_type_client,
+	socket_type_server
 };
 
 enum sock_state : __u8
@@ -61,7 +57,7 @@ struct socket_data
 
 	struct traceparent tp;
 
-	enum sock_type type;
+	enum socket_type type;
 	enum sock_state state;
 };
 
@@ -102,7 +98,7 @@ struct http_request_event
 
 	struct traceparent tp;
 
-	enum sock_type sock_type;
+	enum socket_type sock_type;
 
 	/* payload */
 };
@@ -267,7 +263,7 @@ static __always_inline void print_req_info(const struct socket_data *data, struc
 
 	const __u64 pid_tgid = bpf_get_current_pid_tgid();
 
-	const char *type_str = data->type == sock_type_client ? "HTTPClient" : "HTTP";
+	const char *type_str = data->type == socket_type_client ? "HTTPClient" : "HTTP";
 
 	bpf_printk("%s (%llx) > %s:%u -> %s:%u (sk=%llx)",
 			type_str, pid_tgid, ip_buf, data->local_port, ip_buf2, data->peer_port, sk);
@@ -329,7 +325,7 @@ static __always_inline void on_active_established(struct bpf_sock_ops *skops)
 	data->local_port = skops->local_port;
 	data->peer_ip = bpf_ntohl(skops->remote_ip4);
 	data->peer_port = bpf_ntohl(skops->remote_port);
-	data->type = sock_type_client;
+	data->type = socket_type_client;
 	data->state = sock_state_idle;
 }
 
@@ -350,7 +346,7 @@ static __always_inline void on_passive_established(struct bpf_sock_ops *skops)
 	data->local_port = skops->local_port;
 	data->peer_ip = bpf_ntohl(skops->remote_ip4);
 	data->peer_port = bpf_ntohl(skops->remote_port);
-	data->type = sock_type_server;
+	data->type = socket_type_server;
 	data->state = sock_state_idle;
 }
 
@@ -660,10 +656,10 @@ int egress(struct sk_msg_md *msg)
 
 	switch (data->type)
 	{
-		case sock_type_client:
+		case socket_type_client:
 			handle_client_request(msg, data);
 			break;
-		case sock_type_server:
+		case socket_type_server:
 			handle_server_http_reponse(msg, data);
 			break;
 	}
@@ -765,10 +761,10 @@ int ingress_parser(struct __sk_buff *skb)
 	if (!data)
 		return skb->len;
 
-	if (data->type == sock_type_server)
+	if (data->type == socket_type_server)
 		return handle_server_request(skb, data);
 
-	if (data->type == sock_type_client)
+	if (data->type == socket_type_client)
 		handle_client_http_response(skb, data);
 
 	return skb->len;
