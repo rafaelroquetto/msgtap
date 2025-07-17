@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vmlinux.h"
+#include <bpf/vmlinux.h>
 
 // this "beauty" ensures we hold pkt in the same register being range
 // validated

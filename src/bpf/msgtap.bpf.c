@@ -1,4 +1,4 @@
-#include "vmlinux.h"
+#include <bpf/vmlinux.h>
 
 #include <bpf/bpf_endian.h>
 #include <bpf/bpf_tracing.h>

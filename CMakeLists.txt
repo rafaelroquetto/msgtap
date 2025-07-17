@@ -31,6 +31,10 @@ set(BPF_SKEL
 	${CMAKE_CURRENT_BINARY_DIR}/msgtap.skel.h
 )
 
+set(INCLUDE_DIR
+	${CMAKE_CURRENT_BINARY_DIR}/src
+)
+
 set(USER_SRC
 	${CMAKE_CURRENT_LIST_DIR}/src/user/ebpfmanager.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/user/ebpfmanager.h
@@ -40,7 +44,7 @@ set(USER_SRC
 
 add_custom_target(bpf_build
     COMMAND clang -g -O2 -target bpf -D__TARGET_ARCH_${BPF_ARCH}
-            -c -o ${BPF_OBJ} ${BPF_PROG}
+    -c -o ${BPF_OBJ} ${BPF_PROG} -I${CMAKE_CURRENT_LIST_DIR}/src
     COMMAND bpftool gen skeleton ${BPF_OBJ} > ${BPF_SKEL}
     BYPRODUCTS ${BPF_OBJ} ${BPF_SKEL}
     DEPENDS ${BPF_PROG}
@@ -49,6 +53,10 @@ add_custom_target(bpf_build
 
 add_executable(msgtap ${USER_SRC} ${BPF_SKEL})
 add_dependencies(msgtap bpf_build)
-target_include_directories(msgtap PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+target_include_directories(msgtap PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/src
+)
 
 target_link_libraries(msgtap PRIVATE bpf)
