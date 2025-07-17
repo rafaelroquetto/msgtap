@@ -1,6 +1,8 @@
 #include "ebpfmanager.h"
 #include "httprequest.h"
 
+#include <protocol/protocol.h>
+
 #include <chrono>
 #include <cstdint>
 #include <format>
@@ -9,61 +11,6 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-
-enum class socket_type : uint8_t
-{
-	client,
-	server
-};
-
-struct traceparent
-{
-	uint8_t version;
-	uint8_t trace_id[16];
-	uint8_t span_id[8];
-	uint8_t flags;
-};
-
-enum class event_type : uint8_t
-{
-	http_request_start,
-	http_request_finish,
-	http_request_timeout
-};
-
-struct http_request_event
-{
-	event_type type;
-	uint64_t cookie;
-	uint64_t timestamp;
-	uint32_t pid;
-	uint32_t local_ip;
-	uint32_t local_port;
-	uint32_t peer_ip;
-	uint32_t peer_port;
-	uint32_t payload_len;
-
-	struct traceparent tp;
-
-	socket_type sock_type;
-
-	/* payload */
-};
-
-struct http_request_finished_event
-{
-	event_type type;
-	uint64_t cookie;
-	uint64_t timestamp;
-	uint16_t status_code;
-};
-
-struct http_request_timedout_event
-{
-	enum event_type type;
-	__u64 cookie;
-	__u64 timestamp;
-};
 
 using RequestMap = std::unordered_map<uint64_t, HTTPRequest>;
 
@@ -77,9 +24,9 @@ static std::string_view sockTypeToString(socket_type s)
 {
 	switch (s)
 	{
-		case socket_type::client:
+		case socket_type_client:
 			return "CLIENT";
-		case socket_type::server:
+		case socket_type_server:
 			return "SERVER";
 	}
 
@@ -90,9 +37,9 @@ static HTTPRequest::Type sockTypeToRequestType(socket_type s)
 {
 	switch (s)
 	{
-		case socket_type::client:
+		case socket_type_client:
 			return HTTPRequest::Type::Client;
-		case socket_type::server:
+		case socket_type_server:
 			return HTTPRequest::Type::Server;
 	}
 

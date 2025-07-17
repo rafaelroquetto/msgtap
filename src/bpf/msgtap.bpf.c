@@ -1,5 +1,7 @@
 #include <bpf/vmlinux.h>
 
+#include <protocol/protocol.h>
+
 #include <bpf/bpf_endian.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_helpers.h>
@@ -24,26 +26,12 @@ struct span
 	__u32 len;
 };
 
-enum socket_type : __u8
-{
-	socket_type_client,
-	socket_type_server
-};
-
 enum sock_state : __u8
 {
 	sock_state_idle,
 	sock_state_buffering,
 	sock_state_request_header,
 	sock_state_request_ongoing,
-};
-
-struct traceparent
-{
-	__u8 version;
-	__u8 trace_id[16];
-	__u8 span_id[8];
-	__u8 flags;
 };
 
 struct socket_data
@@ -75,48 +63,6 @@ struct
 	__uint(type, BPF_MAP_TYPE_RINGBUF);
 	__uint(max_entries, 256 * 1024);
 } rb SEC(".maps");
-
-enum event_type : __u8
-{
-	http_request_start,
-	http_request_finish,
-	http_request_timeout,
-};
-
-struct http_request_event
-{
-	enum event_type type;
-
-	__u64 cookie;
-	__u64 timestamp;
-	__u32 pid;
-	__u32 local_ip;
-	__u32 local_port;
-	__u32 peer_ip;
-	__u32 peer_port;
-	__u32 payload_len;
-
-	struct traceparent tp;
-
-	enum socket_type sock_type;
-
-	/* payload */
-};
-
-struct http_request_finished_event
-{
-	enum event_type type;
-	__u64 cookie;
-	__u64 timestamp;
-	__u16 status_code;
-};
-
-struct http_request_timedout_event
-{
-	enum event_type type;
-	__u64 cookie;
-	__u64 timestamp;
-};
 
 enum : __u32
 {
